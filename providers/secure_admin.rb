@@ -19,11 +19,21 @@ include Chef::Asadmin
 use_inline_resources
 
 action :enable do
+ if platform?(%w{ubuntu})
   service "glassfish-#{new_resource.domain_name}" do
     provider Chef::Provider::Service::Upstart
     supports :restart => true, :status => true
     action :nothing
   end
+ end
+
+ if platform?(%w{debian})
+  service "glassfish-#{new_resource.domain_name}" do
+    provider Chef::Provider::Service::Init::Debian
+    supports :restart => true, :status => true
+    action :nothing
+  end
+ end
 
   bash "asadmin_enable-secure-admin" do
     not_if "#{asadmin_command('get secure-admin.enabled')} | grep -x -- 'secure-admin.enabled=true'"
@@ -35,12 +45,21 @@ action :enable do
 end
 
 action :disable do
+ if platform?(%w{ubuntu})
   service "glassfish-#{new_resource.domain_name}" do
     provider Chef::Provider::Service::Upstart
     supports :restart => true, :status => true
     action :nothing
   end
-
+ end
+ if platform?(%w{debian})
+  service "glassfish-#{new_resource.domain_name}" do
+    provider Chef::Provider::Service::Init::Debian
+    supports :restart => true, :status => true
+    action :nothing
+  end
+ end
+ 
   bash "asadmin_disable-secure-admin" do
     only_if "#{asadmin_command('get secure-admin.enabled')} | grep -x -- 'secure-admin.enabled=true'"
     user new_resource.system_user

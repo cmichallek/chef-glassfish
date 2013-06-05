@@ -189,11 +189,22 @@ action :create do
 
   requires_authbind = new_resource.port < 1024 || new_resource.admin_port < 1024
 
+if platform?(%w{ubuntu})
   service "glassfish-#{new_resource.domain_name}" do
     provider Chef::Provider::Service::Upstart
     supports :start => true, :restart => true, :stop => true, :status => true
     action :nothing
   end
+end
+
+if platform?(%w{debian})
+  service "glassfish-#{new_resource.domain_name}" do
+    provider Chef::Provider::Service::Init::Debian
+    supports :start => true, :restart => true, :stop => true, :status => true
+    action :nothing
+  end
+end
+
 
   args = default_jvm_options.dup
   args += new_resource.extra_jvm_options
@@ -215,6 +226,7 @@ action :create do
   args << "-domaindir"
   args << domain_dir_path
 
+if platform?(%w{ubuntu})
   template "/etc/init/glassfish-#{new_resource.domain_name}.conf" do
     source "glassfish-upstart.conf.erb"
     mode "0644"
@@ -223,11 +235,23 @@ action :create do
     variables(:resource => new_resource, :args => args, :authbind => requires_authbind, :listen_ports => [new_resource.admin_port, new_resource.port])
     notifies :restart, "service[glassfish-#{new_resource.domain_name}]", :delayed
   end
+end
+
+if platform?(%w{debian})
+  template "/etc/init.d/glassfish-#{new_resource.domain_name}" do
+    source "glassfish-init.conf.erb"
+    mode "0755"
+    cookbook 'glassfish'
+
+    variables(:resource => new_resource, :args => args, :authbind => requires_authbind, :listen_ports => [new_resource.admin_port, new_resource.port])
+    notifies :restart, "service[glassfish-#{new_resource.domain_name}]", :delayed
+  end
+end
 
   directory node['glassfish']['domains_dir'] do
     owner node['glassfish']['user']
     group node['glassfish']['group']
-    mode "0555"
+    mode "0755"
     recursive true
   end
 
@@ -308,18 +332,38 @@ action :create do
 end
 
 action :destroy do
+
+if platform?(%w{ubuntu})
   service "glassfish-#{new_resource.domain_name}" do
     provider Chef::Provider::Service::Upstart
     action [:stop, :disable]
     ignore_failure true
   end
+end
+
+if platform?(%w{debian})
+  service "glassfish-#{new_resource.domain_name}" do
+    provider Chef::Provider::Service::Init::Debian
+    action [:stop, :disable]
+    ignore_failure true
+  end
+end
 
   directory domain_dir_path do
     recursive true
     action :delete
   end
 
+if platform?(%w{ubuntu})
   file "/etc/init/glassfish-#{new_resource.domain_name}.conf" do
     action :delete
   end
+end
+
+if platform?(%w{debian})
+  file "/etc/init.d/glassfish-#{new_resource.domain_name}" do
+    action :delete
+  end
+end
+
 end
