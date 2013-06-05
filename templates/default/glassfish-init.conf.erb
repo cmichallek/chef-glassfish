@@ -20,8 +20,8 @@ case "$1" in
         <%= node['glassfish']['base_dir'] %>/bin/asadmin stop-domain #{@resource.domain_name}
     ;;
   restart)
-        stop
-        start
+        <%= node['glassfish']['base_dir'] %>/bin/asadmin stop-domain #{@resource.domain_name}
+        <%= node['glassfish']['base_dir'] %>/bin/asadmin start-domain #{@resource.domain_name}
     ;;
   *)
     echo "Usage: /etc/init.d/glassfish {start|stop|restart}"
